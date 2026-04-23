@@ -1,0 +1,27 @@
+.item-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.item-form__input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c4c4c4;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.item-form__submit {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.item-form__submit:disabled {
+  background: #90caf9;
+  cursor: not-allowed;
+}

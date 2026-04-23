@@ -1,0 +1,63 @@
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.item-row__id {
+  color: #616161;
+  font-size: 0.85rem;
+  min-width: 2.5rem;
+}
+
+.item-row__name {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.item-row__input {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #c4c4c4;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.item-row__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.item-row__btn {
+  border: none;
+  border-radius: 4px;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #fff;
+}
+
+.item-row__btn--edit {
+  background: #607d8b;
+}
+
+.item-row__btn--save {
+  background: #2e7d32;
+}
+
+.item-row__btn--save:disabled {
+  background: #a5d6a7;
+  cursor: not-allowed;
+}
+
+.item-row__btn--cancel {
+  background: #9e9e9e;
+}
+
+.item-row__btn--remove {
+  background: #c62828;
+}
