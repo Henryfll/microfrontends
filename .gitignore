@@ -1,0 +1,48 @@
+# Node y dependencias
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-error.log*
+
+# Compilados y builds
+dist/
+build/
+tmp/
+out-tsc/
+bazel-out/
+
+# Entornos y variables de entorno
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs y Editores de código
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# Específicos de SO
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Logs y test
+coverage/
+*.log
+
+# Caches de frameworks (Angular, Webpack, etc.)
+.angular/cache
+.eslintcache
+.stylelintcache
+
+.claude/

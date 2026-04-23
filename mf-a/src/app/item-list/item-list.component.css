@@ -1,0 +1,15 @@
+.item-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.empty {
+  color: #777;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}

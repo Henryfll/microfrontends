@@ -1,0 +1,22 @@
+<li class="item-row">
+  <span class="id">#{{ item().id }}</span>
+  @if (editing()) {
+    <input
+      type="text"
+      [ngModel]="draft()"
+      (ngModelChange)="draft.set($event)"
+      [maxlength]="maxLength"
+      name="draft"
+    />
+    <div class="actions">
+      <button type="button" class="save" (click)="saveEdit()">Guardar</button>
+      <button type="button" class="cancel" (click)="cancelEdit()">Cancelar</button>
+    </div>
+  } @else {
+    <span class="name">{{ item().name }}</span>
+    <div class="actions">
+      <button type="button" class="edit" (click)="startEdit()">Editar</button>
+      <button type="button" class="delete" (click)="onRemove()">Eliminar</button>
+    </div>
+  }
+</li>

@@ -1,0 +1,19 @@
+<form class="item-form" (submit)="submit(); $event.preventDefault()">
+  <label for="name">Nuevo item</label>
+  <div class="row">
+    <input
+      id="name"
+      type="text"
+      [ngModel]="name()"
+      (ngModelChange)="name.set($event)"
+      name="name"
+      [maxlength]="maxLength"
+      placeholder="Nombre del item"
+      autocomplete="off"
+    />
+    <button type="submit">Agregar</button>
+  </div>
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+</form>
