@@ -1,14 +1,24 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { VueLoaderPlugin } = require('vue-loader');
+const { ModuleFederationPlugin } = require('webpack').container;
+const deps = require('./package.json').dependencies;
 
 module.exports = {
   entry: './src/index.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'bundle.[contenthash].js',
-    publicPath: '/',
+    publicPath: 'auto',
+    scriptType: 'text/javascript',
+    uniqueName: 'mfC',
     clean: true,
+  },
+  optimization: {
+    runtimeChunk: false,
+  },
+  experiments: {
+    outputModule: false,
   },
   resolve: {
     extensions: ['.ts', '.js', '.vue'],
@@ -36,6 +46,21 @@ module.exports = {
   },
   plugins: [
     new VueLoaderPlugin(),
+    new ModuleFederationPlugin({
+      name: 'mfC',
+      filename: 'remoteEntry.js',
+      library: { type: 'var', name: 'mfC' },
+      exposes: {
+        './Module': './src/app/App.vue',
+      },
+      shared: {
+        vue: {
+          singleton: true,
+          strictVersion: true,
+          requiredVersion: deps.vue,
+        },
+      },
+    }),
     new HtmlWebpackPlugin({
       template: './public/index.html',
     }),
@@ -49,5 +74,8 @@ module.exports = {
     hot: true,
     historyApiFallback: true,
     open: false,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
   },
 };
