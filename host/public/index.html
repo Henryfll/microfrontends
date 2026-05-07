@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host - Module Federation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; }
+    #nav { display: flex; gap: 8px; padding: 16px; background: #1976d2; }
+    #nav button {
+      padding: 8px 16px;
+      border: 2px solid #fff;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    #nav button.active { background: #fff; color: #1976d2; }
+    #mf-container { padding: 16px; min-height: 100px; }
+  </style>
+</head>
+<body>
+  <nav id="nav">
+    <button data-mf="mfa">MF-A</button>
+    <button data-mf="mfb">MF-B</button>
+    <button data-mf="mfc">MF-C</button>
+  </nav>
+  <main id="mf-container"></main>
+</body>
+</html>

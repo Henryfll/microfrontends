@@ -52,6 +52,7 @@ module.exports = {
       library: { type: 'var', name: 'mfC' },
       exposes: {
         './Module': './src/app/App.vue',
+        './Mount': './src/app/mount.ts',
       },
       shared: {
         vue: {

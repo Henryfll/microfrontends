@@ -19,6 +19,7 @@ module.exports = {
       library: { type: 'var', name: 'mfA' },
       exposes: {
         './Module': './src/app/app.ts',
+        './Mount': './src/app/mount.ts',
       },
       shared: {
         '@angular/core': {

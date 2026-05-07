@@ -42,6 +42,7 @@ module.exports = {
       library: { type: 'var', name: 'mfB' },
       exposes: {
         './Module': './src/app/App.tsx',
+        './Mount': './src/app/mount.tsx',
       },
       shared: {
         react: {
