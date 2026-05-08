@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Host (single-spa)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="systemjs-importmap">
+    {
+      "imports": {
+        "@mf/mf-b": "http://localhost:4202/main.js",
+        "@mf/mf-c": "http://localhost:4203/main.js"
+      }
+    }
+  </script>
+  <script src="system.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Host - single-spa</h1>
+    <nav id="nav">
+      <button data-route="/mfa">MF-A</button>
+      <button data-route="/mfb">MF-B</button>
+      <button data-route="/mfc">MF-C</button>
+    </nav>
+  </header>
+  <main id="content">
+    <div id="single-spa-application:@mf/mf-a"></div>
+    <div id="single-spa-application:@mf/mf-b"></div>
+    <div id="single-spa-application:@mf/mf-c"></div>
+  </main>
+  <script src="root-config.js"></script>
+</body>
+</html>
