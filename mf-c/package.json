@@ -6,15 +6,19 @@
   "scripts": {
     "start": "webpack serve --mode development --port 4203",
     "build": "webpack --mode production",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "verify:single-spa": "node scripts/verify-lifecycle.mjs"
   },
   "dependencies": {
+    "single-spa": "^6.0.3",
+    "single-spa-vue": "^3.0.1",
     "vue": "3.5.24"
   },
   "devDependencies": {
     "@vue/compiler-sfc": "3.5.24",
     "css-loader": "^7.1.2",
     "html-webpack-plugin": "^5.6.3",
+    "jsdom": "^29.1.1",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.2",
     "typescript": "~5.8.3",
