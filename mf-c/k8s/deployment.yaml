@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mf-c
+  labels:
+    app: mf-c
+    tier: microfrontend
+    framework: vue
+    scenario: module-federation
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mf-c
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: mf-c
+        tier: microfrontend
+        framework: vue
+        scenario: module-federation
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: mf-c
+          image: mf-c-mf:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4203
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4203
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4203
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
