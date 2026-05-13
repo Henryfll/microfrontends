@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 980" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eef2f7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="980" fill="url(#bgGrad)"/>
+
+  <!-- Title -->
+  <text x="640" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">
+    Arquitectura  Module Federation en Kubernetes
+  </text>
+  <text x="640" y="68" text-anchor="middle" font-size="14" fill="#475569">
+    Namespace: mf-experiment    Docker Desktop Kubernetes v1.34.1    4 deployments    2 réplicas c/u
+  </text>
+
+  <!-- ============ Windows Host Zone ============ -->
+  <rect x="40" y="95" width="1200" height="125" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="60" y="120" font-size="13" font-weight="700" fill="#334155">WINDOWS HOST  (tu PC)</text>
+
+  <!-- Browser -->
+  <g transform="translate(540, 135)">
+    <rect width="200" height="70" rx="8" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2"/>
+    <text x="100" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#312e81">Navegador</text>
+    <text x="100" y="48" text-anchor="middle" font-size="11" fill="#312e81">localhost:4200 / 4201</text>
+    <text x="100" y="62" text-anchor="middle" font-size="11" fill="#312e81">localhost:4202 / 4203</text>
+  </g>
+
+  <!-- ============ Port-forward bridge ============ -->
+  <g>
+    <line x1="640" y1="220" x2="640" y2="265" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6,4" marker-end="url(#arrow-blue)"/>
+    <rect x="715" y="225" width="220" height="36" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="825" y="248" text-anchor="middle" font-size="12" font-weight="600" fill="#1e40af">kubectl port-forward</text>
+  </g>
+
+  <!-- ============ Cluster Zone ============ -->
+  <rect x="40" y="275" width="1200" height="670" rx="14" fill="#ffffff" stroke="#0ea5e9" stroke-width="2"/>
+  <text x="60" y="300" font-size="13" font-weight="700" fill="#0369a1">DOCKER DESKTOP  KUBERNETES CLUSTER</text>
+
+  <!-- Namespace box -->
+  <rect x="70" y="320" width="1140" height="605" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="90" y="345" font-size="13" font-weight="700" fill="#0369a1">NAMESPACE: mf-experiment</text>
+  <text x="90" y="362" font-size="11" fill="#0369a1">labels:  orchestrator=module-federation   experiment=microfrontend-study</text>
+
+  <!-- ====== Column: HOST ====== -->
+  <g transform="translate(110, 390)">
+    <!-- Component header -->
+    <rect width="240" height="50" rx="8" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+    <text x="120" y="22" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">host</text>
+    <text x="120" y="40" text-anchor="middle" font-size="10" fill="#cbd5e1">vanilla webpack shell</text>
+
+    <!-- Service -->
+    <rect y="70" width="240" height="80" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="120" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#713f12">Service  (NodePort)</text>
+    <text x="120" y="112" text-anchor="middle" font-size="11" fill="#713f12">name: host</text>
+    <text x="120" y="128" text-anchor="middle" font-size="11" fill="#713f12">port 4200  NodePort 30200</text>
+    <text x="120" y="144" text-anchor="middle" font-size="10" fill="#854d0e">selector: app=host</text>
+
+    <!-- Arrow -->
+    <line x1="120" y1="155" x2="120" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- Deployment -->
+    <rect y="180" width="240" height="60" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="120" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#0c4a6e">Deployment</text>
+    <text x="120" y="218" text-anchor="middle" font-size="10" fill="#0c4a6e">RollingUpdate  replicas: 2</text>
+    <text x="120" y="232" text-anchor="middle" font-size="10" fill="#0c4a6e">image: mf-host:latest</text>
+
+    <!-- Pods -->
+    <g transform="translate(0, 260)">
+      <rect width="110" height="80" rx="8" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="55" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">Pod</text>
+      <rect x="20" y="28" width="70" height="34" rx="4" fill="#1e293b"/>
+      <text x="55" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="55" y="56" text-anchor="middle" font-size="9" fill="#cbd5e1">:4200</text>
+      <text x="55" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.29</text>
+
+      <rect x="130" width="110" height="80" rx="8" fill="#ffffff" stroke="#1e293b" stroke-width="1.5"/>
+      <text x="185" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">Pod</text>
+      <rect x="150" y="28" width="70" height="34" rx="4" fill="#1e293b"/>
+      <text x="185" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="185" y="56" text-anchor="middle" font-size="9" fill="#cbd5e1">:4200</text>
+      <text x="185" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.30</text>
+    </g>
+  </g>
+
+  <!-- ====== Column: MF-A (Angular) ====== -->
+  <g transform="translate(390, 390)">
+    <rect width="240" height="50" rx="8" fill="#dd0031" stroke="#9f0420" stroke-width="2"/>
+    <text x="120" y="22" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">mf-a</text>
+    <text x="120" y="40" text-anchor="middle" font-size="10" fill="#fecaca">Angular 21.1.0</text>
+
+    <rect y="70" width="240" height="80" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="120" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#713f12">Service  (NodePort)</text>
+    <text x="120" y="112" text-anchor="middle" font-size="11" fill="#713f12">name: mf-a</text>
+    <text x="120" y="128" text-anchor="middle" font-size="11" fill="#713f12">port 4201  NodePort 30201</text>
+    <text x="120" y="144" text-anchor="middle" font-size="10" fill="#854d0e">selector: app=mf-a</text>
+
+    <line x1="120" y1="155" x2="120" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect y="180" width="240" height="60" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="120" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#0c4a6e">Deployment</text>
+    <text x="120" y="218" text-anchor="middle" font-size="10" fill="#0c4a6e">RollingUpdate  replicas: 2</text>
+    <text x="120" y="232" text-anchor="middle" font-size="10" fill="#0c4a6e">image: mf-a-mf:latest</text>
+
+    <g transform="translate(0, 260)">
+      <rect width="110" height="80" rx="8" fill="#ffffff" stroke="#dd0031" stroke-width="1.5"/>
+      <text x="55" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#9f0420">Pod</text>
+      <rect x="20" y="28" width="70" height="34" rx="4" fill="#dd0031"/>
+      <text x="55" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="55" y="56" text-anchor="middle" font-size="9" fill="#fecaca">:4201</text>
+      <text x="55" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.23</text>
+
+      <rect x="130" width="110" height="80" rx="8" fill="#ffffff" stroke="#dd0031" stroke-width="1.5"/>
+      <text x="185" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#9f0420">Pod</text>
+      <rect x="150" y="28" width="70" height="34" rx="4" fill="#dd0031"/>
+      <text x="185" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="185" y="56" text-anchor="middle" font-size="9" fill="#fecaca">:4201</text>
+      <text x="185" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.24</text>
+    </g>
+  </g>
+
+  <!-- ====== Column: MF-B (React) ====== -->
+  <g transform="translate(670, 390)">
+    <rect width="240" height="50" rx="8" fill="#0891b2" stroke="#155e75" stroke-width="2"/>
+    <text x="120" y="22" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">mf-b</text>
+    <text x="120" y="40" text-anchor="middle" font-size="10" fill="#cffafe">React 19.2.0</text>
+
+    <rect y="70" width="240" height="80" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="120" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#713f12">Service  (NodePort)</text>
+    <text x="120" y="112" text-anchor="middle" font-size="11" fill="#713f12">name: mf-b</text>
+    <text x="120" y="128" text-anchor="middle" font-size="11" fill="#713f12">port 4202  NodePort 30202</text>
+    <text x="120" y="144" text-anchor="middle" font-size="10" fill="#854d0e">selector: app=mf-b</text>
+
+    <line x1="120" y1="155" x2="120" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect y="180" width="240" height="60" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="120" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#0c4a6e">Deployment</text>
+    <text x="120" y="218" text-anchor="middle" font-size="10" fill="#0c4a6e">RollingUpdate  replicas: 2</text>
+    <text x="120" y="232" text-anchor="middle" font-size="10" fill="#0c4a6e">image: mf-b-mf:latest</text>
+
+    <g transform="translate(0, 260)">
+      <rect width="110" height="80" rx="8" fill="#ffffff" stroke="#0891b2" stroke-width="1.5"/>
+      <text x="55" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#155e75">Pod</text>
+      <rect x="20" y="28" width="70" height="34" rx="4" fill="#0891b2"/>
+      <text x="55" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="55" y="56" text-anchor="middle" font-size="9" fill="#cffafe">:4202</text>
+      <text x="55" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.25</text>
+
+      <rect x="130" width="110" height="80" rx="8" fill="#ffffff" stroke="#0891b2" stroke-width="1.5"/>
+      <text x="185" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#155e75">Pod</text>
+      <rect x="150" y="28" width="70" height="34" rx="4" fill="#0891b2"/>
+      <text x="185" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="185" y="56" text-anchor="middle" font-size="9" fill="#cffafe">:4202</text>
+      <text x="185" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.26</text>
+    </g>
+  </g>
+
+  <!-- ====== Column: MF-C (Vue) ====== -->
+  <g transform="translate(950, 390)">
+    <rect width="240" height="50" rx="8" fill="#42b883" stroke="#1e6a4a" stroke-width="2"/>
+    <text x="120" y="22" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">mf-c</text>
+    <text x="120" y="40" text-anchor="middle" font-size="10" fill="#dcfce7">Vue 3.5.24</text>
+
+    <rect y="70" width="240" height="80" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="120" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#713f12">Service  (NodePort)</text>
+    <text x="120" y="112" text-anchor="middle" font-size="11" fill="#713f12">name: mf-c</text>
+    <text x="120" y="128" text-anchor="middle" font-size="11" fill="#713f12">port 4203  NodePort 30203</text>
+    <text x="120" y="144" text-anchor="middle" font-size="10" fill="#854d0e">selector: app=mf-c</text>
+
+    <line x1="120" y1="155" x2="120" y2="175" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect y="180" width="240" height="60" rx="8" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="120" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#0c4a6e">Deployment</text>
+    <text x="120" y="218" text-anchor="middle" font-size="10" fill="#0c4a6e">RollingUpdate  replicas: 2</text>
+    <text x="120" y="232" text-anchor="middle" font-size="10" fill="#0c4a6e">image: mf-c-mf:latest</text>
+
+    <g transform="translate(0, 260)">
+      <rect width="110" height="80" rx="8" fill="#ffffff" stroke="#42b883" stroke-width="1.5"/>
+      <text x="55" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#1e6a4a">Pod</text>
+      <rect x="20" y="28" width="70" height="34" rx="4" fill="#42b883"/>
+      <text x="55" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="55" y="56" text-anchor="middle" font-size="9" fill="#dcfce7">:4203</text>
+      <text x="55" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.27</text>
+
+      <rect x="130" width="110" height="80" rx="8" fill="#ffffff" stroke="#42b883" stroke-width="1.5"/>
+      <text x="185" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#1e6a4a">Pod</text>
+      <rect x="150" y="28" width="70" height="34" rx="4" fill="#42b883"/>
+      <text x="185" y="44" text-anchor="middle" font-size="9" font-weight="700" fill="#ffffff">nginx</text>
+      <text x="185" y="56" text-anchor="middle" font-size="9" fill="#dcfce7">:4203</text>
+      <text x="185" y="74" text-anchor="middle" font-size="9" fill="#475569">10.244.0.28</text>
+    </g>
+  </g>
+
+  <!-- Federation arrows (host consumes remotes) — routed below pods -->
+  <g stroke="#7c3aed" stroke-width="1.8" stroke-dasharray="5,3" fill="none" opacity="0.85">
+    <!-- host -> mf-a -->
+    <path d="M 230 740 Q 370 780 510 740" marker-end="url(#arrow)"/>
+    <!-- host -> mf-b -->
+    <path d="M 230 745 Q 510 810 790 745" marker-end="url(#arrow)"/>
+    <!-- host -> mf-c -->
+    <path d="M 230 750 Q 650 845 1070 750" marker-end="url(#arrow)"/>
+  </g>
+  <text x="640" y="850" text-anchor="middle" font-size="12" font-style="italic" fill="#6d28d9">
+    Module Federation: el host importa remoteEntry.js de cada remoto en runtime
+  </text>
+
+  <!-- Federation legend -->
+  <g transform="translate(80, 870)">
+    <line x1="0" y1="10" x2="40" y2="10" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="50" y="14" font-size="11" fill="#334155">Module Federation: el host carga remoteEntry.js de mf-a, mf-b y mf-c en runtime (desde el navegador)</text>
+  </g>
+  <g transform="translate(80, 895)">
+    <line x1="0" y1="10" x2="40" y2="10" stroke="#2563eb" stroke-width="2" stroke-dasharray="6,4"/>
+    <text x="50" y="14" font-size="11" fill="#334155">kubectl port-forward: única vía para acceder al cluster desde el navegador (Docker Desktop no expone NodePorts en loopback)</text>
+  </g>
+  <g transform="translate(80, 920)">
+    <rect width="14" height="14" fill="#fef9c3" stroke="#ca8a04" stroke-width="1"/>
+    <text x="22" y="11" font-size="11" fill="#334155">Service NodePort</text>
+    <rect x="170" width="14" height="14" fill="#e0f2fe" stroke="#0284c7" stroke-width="1"/>
+    <text x="192" y="11" font-size="11" fill="#334155">Deployment</text>
+    <rect x="290" width="14" height="14" fill="#ffffff" stroke="#1e293b" stroke-width="1"/>
+    <text x="312" y="11" font-size="11" fill="#334155">Pod (contenedor nginx con bundle build)</text>
+  </g>
+</svg>

@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: host
+  namespace: mf-experiment
+  labels:
+    app: host
+    orchestrator: module-federation
+    experiment: microfrontend-study
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: host
+      orchestrator: module-federation
+      experiment: microfrontend-study
+  template:
+    metadata:
+      labels:
+        app: host
+        orchestrator: module-federation
+        experiment: microfrontend-study
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: host
+          image: mf-host:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4200
+              protocol: TCP
