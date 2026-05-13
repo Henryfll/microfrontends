@@ -1,0 +1,275 @@
+name: CI/CD - MF-C (Module Federation)
+
+# ---------------------------------------------------------------------------
+# Pipeline experimental - MF-C
+# Orquestador : Module Federation
+# Rol         : mf-c (remote)
+# Namespace   : mf-experiment
+# Puerto      : 4203
+# Imagen      : mf-c-mf:latest
+#
+# Reglas:
+#   - 1 microfrontend por corrida (este workflow solo construye/despliega MF-C)
+#   - Secuencia fija: checkout -> node -> npm ci -> build -> docker build
+#                     -> kubectl apply -> rollout status -> smoke test
+#   - Sin cache agresivo (npm ci sin actions/cache para no alterar tiempos)
+#   - Sin estrategias cloud-managed (runner self-hosted con cluster local)
+#   - Sin autocorreccion ante fallo del smoke test
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [module-federation]
+    paths:
+      - 'mf-c/**'
+      - '.github/workflows/mf-c-pipeline.yml'
+
+env:
+  # Versiones fijas del experimento
+  NODE_VERSION: '24.13.0'
+  NPM_VERSION: '11.6.2'
+
+  # Identidad del componente
+  COMPONENT_NAME: 'mf-c'
+  COMPONENT_ROLE: 'mf-c'
+  ORCHESTRATOR: 'module-federation'
+
+  # Kubernetes
+  K8S_NAMESPACE: 'mf-experiment'
+  K8S_DEPLOYMENT: 'mf-c'
+  K8S_SERVICE: 'mf-c'
+
+  # Networking
+  APP_PORT: '4203'
+  SMOKE_URL: 'http://localhost:4203'
+
+  # Docker
+  DOCKER_IMAGE: 'mf-c-mf'
+  DOCKER_TAG: 'latest'
+
+  # Rutas de trabajo
+  COMPONENT_DIR: 'mf-c'
+  K8S_DIR: 'mf-c/k8s'
+  METRICS_FILE: 'metrics-mf-c.json'
+
+jobs:
+  build-deploy-mf-c:
+    name: Build & Deploy MF-C
+    # IMPORTANTE: requiere runner self-hosted con acceso al cluster local
+    # (kubectl apuntando al kube-context del experimento + Docker daemon local)
+    runs-on: [self-hosted, linux, k8s-local]
+    timeout-minutes: 30
+
+    steps:
+      # -------------------------------------------------------------------
+      # 0. Inicio de medicion global
+      # -------------------------------------------------------------------
+      - name: Init pipeline timer
+        id: t_pipeline_start
+        run: |
+          echo "pipeline_start_ns=$(date +%s%N)" >> "$GITHUB_OUTPUT"
+          echo "pipeline_start_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------
+      # 1. Checkout del repositorio
+      # -------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # -------------------------------------------------------------------
+      # 2. Configuracion de entorno Node.js (version fija)
+      # -------------------------------------------------------------------
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Sin cache: 'cache: npm' se omite a proposito para no alterar
+          # las mediciones de tiempo de instalacion.
+
+      - name: Verify toolchain versions
+        run: |
+          node --version
+          npm --version
+          docker --version
+          kubectl version --client=true
+
+      # -------------------------------------------------------------------
+      # 3. Instalacion de dependencias (npm ci)  -> METRICA: t_install
+      # -------------------------------------------------------------------
+      - name: npm ci (install)
+        id: step_install
+        working-directory: ${{ env.COMPONENT_DIR }}
+        run: |
+          t_start=$(date +%s%N)
+          npm ci --no-audit --no-fund
+          t_end=$(date +%s%N)
+          echo "t_install_ns=$((t_end - t_start))" >> "$GITHUB_OUTPUT"
+          echo "t_install_s=$(awk "BEGIN {printf \"%.3f\", ($t_end - $t_start)/1000000000}")" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------
+      # 4. Build de la aplicacion  -> METRICA: t_build
+      # -------------------------------------------------------------------
+      - name: Build application
+        id: step_build
+        working-directory: ${{ env.COMPONENT_DIR }}
+        run: |
+          t_start=$(date +%s%N)
+          npm run build
+          t_end=$(date +%s%N)
+          echo "t_build_ns=$((t_end - t_start))" >> "$GITHUB_OUTPUT"
+          echo "t_build_s=$(awk "BEGIN {printf \"%.3f\", ($t_end - $t_start)/1000000000}")" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------
+      # 5. Construccion de imagen Docker  -> METRICA: t_docker_build
+      # -------------------------------------------------------------------
+      - name: Docker build
+        id: step_docker
+        working-directory: ${{ env.COMPONENT_DIR }}
+        run: |
+          t_start=$(date +%s%N)
+          docker build \
+            --no-cache \
+            --pull=false \
+            -t ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} \
+            .
+          t_end=$(date +%s%N)
+          echo "t_docker_ns=$((t_end - t_start))" >> "$GITHUB_OUTPUT"
+          echo "t_docker_s=$(awk "BEGIN {printf \"%.3f\", ($t_end - $t_start)/1000000000}")" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------
+      # 6. Aplicacion de manifiestos Kubernetes
+      # 7. Espera de despliegue (rollout status)
+      #    -> METRICA: t_deploy (ambos pasos juntos)
+      # -------------------------------------------------------------------
+      - name: Ensure namespace exists
+        run: |
+          kubectl get namespace ${{ env.K8S_NAMESPACE }} >/dev/null 2>&1 \
+            || kubectl create namespace ${{ env.K8S_NAMESPACE }}
+
+      - name: Apply manifests & wait rollout
+        id: step_deploy
+        run: |
+          t_start=$(date +%s%N)
+
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f ${{ env.K8S_DIR }}/deployment.yaml
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f ${{ env.K8S_DIR }}/service.yaml
+
+          # Forzar reinicio para tomar la nueva imagen :latest
+          kubectl rollout restart deployment/${{ env.K8S_DEPLOYMENT }} \
+            -n ${{ env.K8S_NAMESPACE }}
+
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }} \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=300s
+
+          t_end=$(date +%s%N)
+          echo "t_deploy_ns=$((t_end - t_start))" >> "$GITHUB_OUTPUT"
+          echo "t_deploy_s=$(awk "BEGIN {printf \"%.3f\", ($t_end - $t_start)/1000000000}")" >> "$GITHUB_OUTPUT"
+
+      # -------------------------------------------------------------------
+      # 8. Smoke test HTTP  -> METRICA: smoke_result
+      # -------------------------------------------------------------------
+      - name: Port-forward service to localhost:${{ env.APP_PORT }}
+        run: |
+          # Port-forward en background para exponer Service en el puerto
+          # asignado del experimento (no usamos NodePort para mantener la
+          # URL http://localhost:4203 segun la especificacion).
+          nohup kubectl port-forward \
+            -n ${{ env.K8S_NAMESPACE }} \
+            svc/${{ env.K8S_SERVICE }} \
+            ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+            > pf-mf-c.log 2>&1 &
+          echo $! > pf-mf-c.pid
+          # Espera minima determinista para apertura del socket
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 1
+            if curl -fsS -o /dev/null "${{ env.SMOKE_URL }}"; then
+              break
+            fi
+          done
+
+      - name: Smoke test (HTTP)
+        id: step_smoke
+        run: |
+          set +e
+          http_code=$(curl -s -o smoke-body.html -w "%{http_code}" "${{ env.SMOKE_URL }}")
+          rc=$?
+          set -e
+
+          echo "http_code=$http_code" >> "$GITHUB_OUTPUT"
+
+          if [ "$rc" -ne 0 ] || [ "$http_code" != "200" ]; then
+            echo "smoke_result=fail" >> "$GITHUB_OUTPUT"
+            echo "Smoke test FAILED -> rc=$rc http_code=$http_code"
+            echo "----- response body (head) -----"
+            head -c 500 smoke-body.html || true
+            echo
+            exit 1
+          fi
+
+          echo "smoke_result=success" >> "$GITHUB_OUTPUT"
+          echo "Smoke test OK -> ${{ env.SMOKE_URL }} (HTTP $http_code)"
+
+      - name: Stop port-forward
+        if: always()
+        run: |
+          if [ -f pf-mf-c.pid ]; then
+            kill "$(cat pf-mf-c.pid)" 2>/dev/null || true
+            rm -f pf-mf-c.pid
+          fi
+
+      # -------------------------------------------------------------------
+      # Cierre de medicion global y publicacion de metricas
+      # -------------------------------------------------------------------
+      - name: Compute total pipeline time & emit metrics
+        if: always()
+        id: step_metrics
+        env:
+          T_START_NS:    ${{ steps.t_pipeline_start.outputs.pipeline_start_ns }}
+          T_START_ISO:   ${{ steps.t_pipeline_start.outputs.pipeline_start_iso }}
+          T_INSTALL_S:   ${{ steps.step_install.outputs.t_install_s }}
+          T_BUILD_S:     ${{ steps.step_build.outputs.t_build_s }}
+          T_DOCKER_S:    ${{ steps.step_docker.outputs.t_docker_s }}
+          T_DEPLOY_S:    ${{ steps.step_deploy.outputs.t_deploy_s }}
+          SMOKE_RESULT:  ${{ steps.step_smoke.outputs.smoke_result }}
+          HTTP_CODE:     ${{ steps.step_smoke.outputs.http_code }}
+        run: |
+          t_end_ns=$(date +%s%N)
+          t_total_s=$(awk "BEGIN {printf \"%.3f\", ($t_end_ns - $T_START_NS)/1000000000}")
+
+          cat > "${{ env.METRICS_FILE }}" <<EOF
+          {
+            "component":      "${{ env.COMPONENT_NAME }}",
+            "orchestrator":   "${{ env.ORCHESTRATOR }}",
+            "namespace":      "${{ env.K8S_NAMESPACE }}",
+            "image":          "${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}",
+            "node_version":   "${{ env.NODE_VERSION }}",
+            "started_at":     "${T_START_ISO}",
+            "metrics_seconds": {
+              "install":      ${T_INSTALL_S:-null},
+              "build":        ${T_BUILD_S:-null},
+              "docker_build": ${T_DOCKER_S:-null},
+              "deploy":       ${T_DEPLOY_S:-null},
+              "total":        ${t_total_s}
+            },
+            "smoke_test": {
+              "url":       "${{ env.SMOKE_URL }}",
+              "http_code": "${HTTP_CODE:-}",
+              "result":    "${SMOKE_RESULT:-fail}"
+            }
+          }
+          EOF
+
+          echo "------ metrics ------"
+          cat "${{ env.METRICS_FILE }}"
+
+      - name: Upload metrics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-mf-c-${{ github.run_id }}
+          path: ${{ env.METRICS_FILE }}
+          retention-days: 30
