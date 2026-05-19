@@ -1,0 +1,324 @@
+# =============================================================================
+# Pipeline CI/CD - Microfrontend: mf-a (single-spa)
+# =============================================================================
+# Unidad experimental independiente. Se ejecuta SOLO para mf-a.
+# Orden fijo: checkout -> node -> npm ci -> SonarQube -> build -> docker ->
+#             kubectl apply -> rollout status -> smoke test
+# No se permite caching que afecte la medicion de tiempos.
+# =============================================================================
+
+name: mf-a-pipeline-single-spa
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - single-spa
+    paths:
+      - 'mf-a/**'
+      - '.github/workflows/mf-a-pipeline.yml'
+
+# Una unica unidad experimental por ejecucion (mf-a)
+concurrency:
+  group: experiment-single-spa-mf-a
+  cancel-in-progress: false
+
+env:
+  # ----- Identidad del experimento -----
+  ORCHESTRATOR: single-spa
+  COMPONENT: mf-a
+  BRANCH: single-spa
+
+  # ----- Entorno fijo (NO cambiar entre corridas) -----
+  NODE_VERSION: '24.13.0'
+  NPM_VERSION: '11.6.2'
+
+  # ----- Microfrontend -----
+  MF_DIR: mf-a
+  MF_PORT: '4201'
+  K8S_NAMESPACE: single-spa-experiment
+  K8S_DEPLOYMENT: mf-a
+  K8S_SERVICE: mf-a
+  K8S_NODEPORT: '30201'
+  REPLICAS: '2'
+
+  # ----- Imagen Docker (generada en fase de contenedorizacion) -----
+  IMAGE_NAME: mf-a
+  IMAGE_TAG: latest
+
+  # ----- SonarQube -----
+  SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  SONAR_PROJECT_KEY: microfrontends_mf-a_single-spa
+
+jobs:
+  # ===========================================================================
+  # JOB UNICO: pipeline secuencial reproducible
+  # ===========================================================================
+  pipeline:
+    name: mf-a single-spa pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 0) Marca de inicio del pipeline (referencia para tiempo total)
+      # -----------------------------------------------------------------------
+      - name: Start pipeline timer
+        id: t_pipeline_start
+        run: |
+          echo "PIPELINE_START=$(date +%s%3N)" >> $GITHUB_ENV
+          echo "Pipeline start: $(date -Iseconds)"
+
+      # -----------------------------------------------------------------------
+      # 1) Checkout del repositorio
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          # fetch-depth: 0 requerido por SonarQube para blame/coverage por commit
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # 2) Configuracion de entorno Node.js (version fija del experimento)
+      #    NO se habilita cache (afectaria la medicion de tiempos).
+      # -----------------------------------------------------------------------
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # cache: NONE (regla experimental: no cache que afecte medicion)
+
+      - name: Pin npm ${{ env.NPM_VERSION }}
+        run: npm install -g npm@${{ env.NPM_VERSION }}
+
+      - name: Print toolchain versions
+        run: |
+          node --version
+          npm --version
+          docker --version
+          echo "Component: $COMPONENT | Orchestrator: $ORCHESTRATOR | Port: $MF_PORT"
+
+      # -----------------------------------------------------------------------
+      # 3) Instalacion de dependencias con npm ci
+      #    METRICA: tiempo de instalacion
+      # -----------------------------------------------------------------------
+      - name: npm ci (measured)
+        id: m_install
+        working-directory: ${{ env.MF_DIR }}
+        run: |
+          T0=$(date +%s%3N)
+          npm ci
+          T1=$(date +%s%3N)
+          DUR=$(( T1 - T0 ))
+          echo "install_ms=$DUR" >> $GITHUB_OUTPUT
+          echo "[METRIC] npm_ci_ms=$DUR"
+
+      # -----------------------------------------------------------------------
+      # 4) ANALISIS DE CALIDAD (SONARQUBE) - antes del build (Quality Gate)
+      #    Si falla -> el pipeline se detiene aqui.
+      # -----------------------------------------------------------------------
+      - name: SonarQube static analysis (Quality Gate)
+        id: m_sonar
+        uses: SonarSource/sonarqube-scan-action@v4
+        with:
+          projectBaseDir: ${{ env.MF_DIR }}
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+
+      - name: SonarQube Quality Gate check (blocking)
+        id: sonar_gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        with:
+          scanMetadataReportFile: ${{ env.MF_DIR }}/.scannerwork/report-task.txt
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+
+      - name: Export SonarQube metrics
+        if: always()
+        working-directory: ${{ env.MF_DIR }}
+        run: |
+          # Captura: score, code smells, duplicacion, maintainability rating
+          curl -s -u "${SONAR_TOKEN}:" \
+            "${SONAR_HOST_URL}/api/measures/component?component=${SONAR_PROJECT_KEY}&metricKeys=alert_status,code_smells,duplicated_lines_density,sqale_rating,complexity,sqale_index" \
+            -o sonar-metrics.json
+          echo "[METRIC] sonar_report=$(cat sonar-metrics.json)"
+
+      # -----------------------------------------------------------------------
+      # 5) Build de la aplicacion (solo si Quality Gate paso)
+      #    METRICA: tiempo de build
+      # -----------------------------------------------------------------------
+      - name: Build application (measured)
+        id: m_build
+        working-directory: ${{ env.MF_DIR }}
+        run: |
+          T0=$(date +%s%3N)
+          npm run build
+          T1=$(date +%s%3N)
+          DUR=$(( T1 - T0 ))
+          echo "build_ms=$DUR" >> $GITHUB_OUTPUT
+          echo "[METRIC] build_ms=$DUR"
+
+      # -----------------------------------------------------------------------
+      # 6) Construccion de imagen Docker (usa Dockerfile previamente generado)
+      #    METRICA: tiempo de docker build
+      #    --no-cache para evitar sesgo en medicion experimental.
+      # -----------------------------------------------------------------------
+      - name: Docker build (measured, no cache)
+        id: m_docker
+        working-directory: ${{ env.MF_DIR }}
+        run: |
+          T0=$(date +%s%3N)
+          docker build --no-cache --pull \
+            -t ${IMAGE_NAME}:${IMAGE_TAG} \
+            -f Dockerfile .
+          T1=$(date +%s%3N)
+          DUR=$(( T1 - T0 ))
+          echo "docker_ms=$DUR" >> $GITHUB_OUTPUT
+          echo "[METRIC] docker_build_ms=$DUR"
+
+      # -----------------------------------------------------------------------
+      # 7) Despliegue en Kubernetes (kind para ejecucion en CI)
+      #    Usa manifests previamente generados en mf-a/k8s/.
+      #    METRICA: tiempo de despliegue (apply + rollout)
+      # -----------------------------------------------------------------------
+      - name: Bootstrap Kubernetes cluster (kind)
+        uses: helm/kind-action@v1
+        with:
+          version: v0.27.0
+          node_image: kindest/node:v1.34.3
+          cluster_name: single-spa-experiment
+
+      - name: Load Docker image into kind cluster
+        run: |
+          kind load docker-image ${IMAGE_NAME}:${IMAGE_TAG} \
+            --name single-spa-experiment
+
+      - name: kubectl version
+        run: kubectl version --client=true
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace ${K8S_NAMESPACE} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Kubernetes apply + rollout (measured)
+        id: m_deploy
+        run: |
+          T0=$(date +%s%3N)
+          kubectl apply -n ${K8S_NAMESPACE} -f ${MF_DIR}/k8s/deployment.yaml
+          kubectl apply -n ${K8S_NAMESPACE} -f ${MF_DIR}/k8s/service.yaml
+          # 8) Espera de estado Ready
+          kubectl rollout status deployment/${K8S_DEPLOYMENT} \
+            -n ${K8S_NAMESPACE} --timeout=300s
+          T1=$(date +%s%3N)
+          DUR=$(( T1 - T0 ))
+          echo "deploy_ms=$DUR" >> $GITHUB_OUTPUT
+          echo "[METRIC] k8s_deploy_ms=$DUR"
+
+      - name: kubectl verification
+        run: |
+          kubectl get deployment/${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE} -o wide
+          kubectl get pods -n ${K8S_NAMESPACE} -l app=${COMPONENT} -o wide
+          kubectl get svc/${K8S_SERVICE} -n ${K8S_NAMESPACE} -o wide
+          # Validar replicas fijas = 2
+          REPLICAS_READY=$(kubectl get deployment/${K8S_DEPLOYMENT} \
+            -n ${K8S_NAMESPACE} -o jsonpath='{.status.readyReplicas}')
+          echo "Ready replicas: $REPLICAS_READY (expected: ${REPLICAS})"
+          test "$REPLICAS_READY" = "${REPLICAS}"
+
+      # -----------------------------------------------------------------------
+      # 9) Smoke test HTTP en http://localhost:<PUERTO>
+      #    Port-forward del Service para exponer ${MF_PORT} en localhost.
+      #    Si falla -> detener pipeline, registrar error, sin correccion.
+      # -----------------------------------------------------------------------
+      - name: Port-forward service for smoke test
+        run: |
+          kubectl port-forward -n ${K8S_NAMESPACE} \
+            svc/${K8S_SERVICE} ${MF_PORT}:${MF_PORT} > pf.log 2>&1 &
+          echo $! > pf.pid
+          # Esperar al socket en lugar de un sleep ciego
+          for i in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/${MF_PORT}) >/dev/null 2>&1; then
+              echo "Port ${MF_PORT} ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Smoke test HTTP (blocking)
+        id: smoke
+        run: |
+          URL="http://localhost:${MF_PORT}"
+          echo "Probing $URL"
+          HTTP_CODE=$(curl -s -o smoke-body.html -w "%{http_code}" \
+            --max-time 10 --retry 3 --retry-delay 2 "$URL")
+          echo "[METRIC] smoke_http_code=$HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "[METRIC] smoke_test=fail"
+            exit 1
+          fi
+          echo "[METRIC] smoke_test=success"
+          echo "result=success" >> $GITHUB_OUTPUT
+
+      - name: Stop port-forward
+        if: always()
+        run: |
+          if [ -f pf.pid ]; then kill "$(cat pf.pid)" 2>/dev/null || true; fi
+
+      # -----------------------------------------------------------------------
+      # Cierre: tiempo total y consolidacion de metricas
+      # -----------------------------------------------------------------------
+      - name: Consolidate experiment metrics
+        if: always()
+        run: |
+          PIPELINE_END=$(date +%s%3N)
+          TOTAL_MS=$(( PIPELINE_END - PIPELINE_START ))
+          mkdir -p metrics
+          cat > metrics/mf-a-single-spa-metrics.json <<EOF
+          {
+            "orchestrator": "${ORCHESTRATOR}",
+            "component": "${COMPONENT}",
+            "branch": "${BRANCH}",
+            "node_version": "${NODE_VERSION}",
+            "npm_version": "${NPM_VERSION}",
+            "namespace": "${K8S_NAMESPACE}",
+            "port": ${MF_PORT},
+            "replicas": ${REPLICAS},
+            "cicd": {
+              "npm_ci_ms": ${{ steps.m_install.outputs.install_ms || 0 }},
+              "build_ms": ${{ steps.m_build.outputs.build_ms || 0 }},
+              "docker_build_ms": ${{ steps.m_docker.outputs.docker_ms || 0 }},
+              "k8s_deploy_ms": ${{ steps.m_deploy.outputs.deploy_ms || 0 }},
+              "pipeline_total_ms": ${TOTAL_MS}
+            },
+            "quality": {
+              "sonar_report_file": "mf-a/sonar-metrics.json",
+              "quality_gate": "${{ steps.sonar_gate.outputs.quality-gate-status || 'unknown' }}"
+            },
+            "runtime": {
+              "smoke_test": "${{ steps.smoke.outputs.result || 'fail' }}"
+            }
+          }
+          EOF
+          echo "===== Metrics ====="
+          cat metrics/mf-a-single-spa-metrics.json
+
+      - name: Upload experiment metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mf-a-single-spa-metrics
+          path: |
+            metrics/mf-a-single-spa-metrics.json
+            mf-a/sonar-metrics.json
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all -n ${K8S_NAMESPACE} || true
+          kubectl describe deployment/${K8S_DEPLOYMENT} -n ${K8S_NAMESPACE} || true
+          kubectl logs -n ${K8S_NAMESPACE} -l app=${COMPONENT} --tail=200 || true
